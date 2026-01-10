@@ -87,7 +87,7 @@ runs:
         go install github.com/securego/gosec/v2/cmd/gosec@latest
         
         # Install Ruby security tools
-        gem install bundler-audit brakeman
+        # gem install bundler-audit brakeman
         
         echo "Security scanners installed successfully"
 
