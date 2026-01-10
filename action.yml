@@ -1,0 +1,223 @@
+name: 'Universal Security Scanner'
+description: 'Language-agnostic security vulnerability scanner with extensible parser architecture. Auto-creates issues and assigns to GitHub Copilot for AI-powered remediation.'
+author: 'kmesiab'
+branding:
+  icon: 'shield'
+  color: 'red'
+
+inputs:
+  github-token:
+    description: 'GitHub token for creating issues and comments'
+    required: true
+  languages:
+    description: 'Comma-separated list of languages to scan (e.g., python,javascript,go,ruby)'
+    required: false
+    default: 'auto'
+  severity-threshold:
+    description: 'Minimum severity level to report (low, medium, high, critical)'
+    required: false
+    default: 'medium'
+  fail-on-severity:
+    description: 'Fail the build if vulnerabilities of this severity or higher are found'
+    required: false
+    default: 'critical'
+  copilot-assignee:
+    description: 'GitHub username to assign issues to (typically a Copilot-enabled user)'
+    required: false
+    default: ''
+  fallback-assignee:
+    description: 'Fallback assignee if Copilot assignee is not available'
+    required: false
+    default: ''
+  auto-close-fixed:
+    description: 'Automatically close issues when vulnerabilities are fixed'
+    required: false
+    default: 'true'
+  scan-path:
+    description: 'Path to scan for security vulnerabilities'
+    required: false
+    default: '.'
+  exclude-paths:
+    description: 'Comma-separated list of paths to exclude from scanning'
+    required: false
+    default: ''
+  custom-parsers:
+    description: 'Path to custom parser configurations'
+    required: false
+    default: ''
+
+outputs:
+  vulnerabilities-found:
+    description: 'Number of vulnerabilities found'
+  issues-created:
+    description: 'Number of GitHub issues created'
+  scan-results:
+    description: 'JSON formatted scan results'
+  highest-severity:
+    description: 'Highest severity level found'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Setup Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+
+    - name: Install Scanner Tools
+      shell: bash
+      run: |
+        # Install Python security tools
+        pip install safety bandit semgrep
+        
+        # Install Node.js security tools
+        npm install -g npm-audit retire snyk
+        
+        # Install Go security tools
+        go install github.com/securego/gosec/v2/cmd/gosec@latest
+        
+        # Install Ruby security tools
+        gem install bundler-audit brakeman
+        
+        echo "Security scanners installed successfully"
+
+    - name: Detect Languages
+      id: detect
+      shell: bash
+      run: |
+        cd ${{ inputs.scan-path }}
+        
+        DETECTED_LANGS=""
+        
+        # Detect Python
+        if [ -f "requirements.txt" ] || [ -f "Pipfile" ] || [ -f "pyproject.toml" ] || find . -name "*.py" -not -path "*/.*" | head -1 | grep -q .; then
+          DETECTED_LANGS="${DETECTED_LANGS},python"
+        fi
+        
+        # Detect JavaScript/Node.js
+        if [ -f "package.json" ] || [ -f "package-lock.json" ] || [ -f "yarn.lock" ]; then
+          DETECTED_LANGS="${DETECTED_LANGS},javascript"
+        fi
+        
+        # Detect Go
+        if [ -f "go.mod" ] || [ -f "go.sum" ] || find . -name "*.go" -not -path "*/.*" | head -1 | grep -q .; then
+          DETECTED_LANGS="${DETECTED_LANGS},go"
+        fi
+        
+        # Detect Ruby
+        if [ -f "Gemfile" ] || [ -f "Gemfile.lock" ] || find . -name "*.rb" -not -path "*/.*" | head -1 | grep -q .; then
+          DETECTED_LANGS="${DETECTED_LANGS},ruby"
+        fi
+        
+        # Detect Java
+        if [ -f "pom.xml" ] || [ -f "build.gradle" ] || find . -name "*.java" -not -path "*/.*" | head -1 | grep -q .; then
+          DETECTED_LANGS="${DETECTED_LANGS},java"
+        fi
+        
+        # Remove leading comma
+        DETECTED_LANGS="${DETECTED_LANGS#,}"
+        
+        if [ "${{ inputs.languages }}" = "auto" ]; then
+          echo "languages=${DETECTED_LANGS}" >> $GITHUB_OUTPUT
+        else
+          echo "languages=${{ inputs.languages }}" >> $GITHUB_OUTPUT
+        fi
+        
+        echo "Detected languages: ${DETECTED_LANGS}"
+
+    - name: Run Security Scans
+      id: scan
+      shell: bash
+      run: |
+        cd ${{ inputs.scan-path }}
+        mkdir -p $GITHUB_WORKSPACE/scan-results
+        
+        LANGS="${{ steps.detect.outputs.languages }}"
+        
+        # Scan Python
+        if echo "$LANGS" | grep -q "python"; then
+          echo "Scanning Python..."
+          
+          # Safety check
+          if [ -f "requirements.txt" ]; then
+            safety check --json --file requirements.txt > $GITHUB_WORKSPACE/scan-results/safety.json 2>&1 || true
+          fi
+          
+          # Bandit check
+          bandit -r . -f json -o $GITHUB_WORKSPACE/scan-results/bandit.json 2>&1 || true
+        fi
+        
+        # Scan JavaScript/Node.js
+        if echo "$LANGS" | grep -q "javascript"; then
+          echo "Scanning JavaScript/Node.js..."
+          
+          # npm audit
+          if [ -f "package.json" ]; then
+            npm audit --json > $GITHUB_WORKSPACE/scan-results/npm-audit.json 2>&1 || true
+          fi
+          
+          # Retire.js
+          retire --js --outputformat json --outputpath $GITHUB_WORKSPACE/scan-results/retire.json 2>&1 || true
+        fi
+        
+        # Scan Go
+        if echo "$LANGS" | grep -q "go"; then
+          echo "Scanning Go..."
+          
+          # gosec
+          gosec -fmt json -out $GITHUB_WORKSPACE/scan-results/gosec.json ./... 2>&1 || true
+        fi
+        
+        # Scan Ruby
+        if echo "$LANGS" | grep -q "ruby"; then
+          echo "Scanning Ruby..."
+          
+          # bundler-audit
+          if [ -f "Gemfile.lock" ]; then
+            bundle-audit check --format json > $GITHUB_WORKSPACE/scan-results/bundler-audit.json 2>&1 || true
+          fi
+          
+          # Brakeman (for Rails apps)
+          if [ -f "config/application.rb" ]; then
+            brakeman -f json -o $GITHUB_WORKSPACE/scan-results/brakeman.json 2>&1 || true
+          fi
+        fi
+        
+        echo "Security scans completed"
+
+    - name: Parse Results and Create Issues
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+      run: |
+        python ${{ github.action_path }}/scripts/parse_and_create_issues.py \
+          --results-dir $GITHUB_WORKSPACE/scan-results \
+          --severity-threshold ${{ inputs.severity-threshold }} \
+          --copilot-assignee "${{ inputs.copilot-assignee }}" \
+          --fallback-assignee "${{ inputs.fallback-assignee }}" \
+          --auto-close-fixed ${{ inputs.auto-close-fixed }} \
+          --repository ${{ github.repository }}
+
+    - name: Check Severity Threshold
+      shell: bash
+      run: |
+        HIGHEST_SEVERITY=$(cat $GITHUB_WORKSPACE/scan-results/summary.json | jq -r '.highest_severity')
+        FAIL_THRESHOLD="${{ inputs.fail-on-severity }}"
+        
+        # Define severity levels
+        declare -A severity_levels=(["low"]=1 ["medium"]=2 ["high"]=3 ["critical"]=4)
+        
+        if [ "${severity_levels[$HIGHEST_SEVERITY]}" -ge "${severity_levels[$FAIL_THRESHOLD]}" ]; then
+          echo "::error::Found vulnerabilities at or above $FAIL_THRESHOLD severity level"
+          exit 1
+        fi
