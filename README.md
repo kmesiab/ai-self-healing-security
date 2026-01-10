@@ -1,29 +1,32 @@
-# Universal Security Action
+# AI Self-Healing Security
 
-[![GitHub marketplace](https://img.shields.io/badge/marketplace-universal--security--action-blue?logo=github)](https://github.com/marketplace/actions/universal-security-action)
+[![GitHub marketplace](https://img.shields.io/badge/marketplace-ai--self--healing--security-blue?logo=github)](https://github.com/marketplace/actions/ai-self-healing-security)
 [![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](https://choosealicense.com/licenses/mit/)
 
-A language-agnostic security vulnerability scanner with extensible parser architecture. Automatically scans your code for security vulnerabilities, creates GitHub issues, and assigns them to GitHub Copilot for AI-powered remediation.
+A language-agnostic security vulnerability scanner with extensible parser architecture. Automatically scans your code for security vulnerabilities, creates GitHub issues, and assigns them to GitHub Copilot for AI-powered self-healing remediation.
 
 ## Features
 
 ✨ **Multi-Language Support**: Automatically detects and scans Python, JavaScript/Node.js, Go, Ruby, and Java projects
 
 🔍 **Comprehensive Scanning**: Integrates industry-standard security tools:
+
 - **Python**: Safety, Bandit, Semgrep
 - **JavaScript/Node.js**: npm audit, Retire.js, Snyk
 - **Go**: gosec
 - **Ruby**: bundler-audit, Brakeman
 
-🤖 **AI-Powered Remediation**: Automatically assigns issues to GitHub Copilot-enabled users for intelligent code fixes
+🤖 **AI-Powered Self-Healing**: Automatically assigns issues to GitHub Copilot-enabled users for intelligent, autonomous code remediation
 
 ⚙️ **Highly Configurable**:
+
 - Severity thresholds (low, medium, high, critical)
 - Build failure criteria
 - Custom scan paths and exclusions
 - Fallback assignee support
 
-📊 **Smart Issue Management**: 
+📊 **Smart Issue Management**:
+
 - Automatic GitHub issue creation
 - Deduplication to avoid redundant issues
 - Auto-close fixed vulnerabilities
@@ -50,13 +53,13 @@ jobs:
     permissions:
       contents: read
       issues: write
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
-      - name: Run Universal Security Scanner
-        uses: kmesiab/universal-security-action@v1
+
+      - name: Run AI Self-Healing Security Scanner
+        uses: kmesiab/ai-self-healing-security@v1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           severity-threshold: 'medium'
@@ -74,7 +77,7 @@ jobs:
 | `languages` | Comma-separated languages to scan (auto-detection if omitted) | No | `auto` |
 | `severity-threshold` | Minimum severity to report: low, medium, high, critical | No | `medium` |
 | `fail-on-severity` | Fail build at this severity or higher | No | `critical` |
-| `copilot-assignee` | GitHub username for Copilot-powered remediation | No | ` ` |
+| `copilot-assignee` | GitHub username for Copilot-powered remediation | No | `` |
 | `fallback-assignee` | Fallback assignee if Copilot user unavailable | No | `` |
 | `auto-close-fixed` | Auto-close issues when vulnerabilities are fixed | No | `true` |
 | `scan-path` | Path to scan | No | `.` |
@@ -95,7 +98,7 @@ jobs:
 ### Basic Scan with Auto-Detection
 
 ```yaml
-- uses: kmesiab/universal-security-action@v1
+- uses: kmesiab/ai-self-healing-security@v1
   with:
     github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
@@ -103,7 +106,7 @@ jobs:
 ### Scan Specific Languages
 
 ```yaml
-- uses: kmesiab/universal-security-action@v1
+- uses: kmesiab/ai-self-healing-security@v1
   with:
     github-token: ${{ secrets.GITHUB_TOKEN }}
     languages: 'python,javascript,go'
@@ -113,7 +116,7 @@ jobs:
 ### Strict Mode with Copilot Integration
 
 ```yaml
-- uses: kmesiab/universal-security-action@v1
+- uses: kmesiab/ai-self-healing-security@v1
   with:
     github-token: ${{ secrets.GITHUB_TOKEN }}
     fail-on-severity: 'high'
@@ -124,7 +127,7 @@ jobs:
 ### Scan Specific Directory
 
 ```yaml
-- uses: kmesiab/universal-security-action@v1
+- uses: kmesiab/ai-self-healing-security@v1
   with:
     github-token: ${{ secrets.GITHUB_TOKEN }}
     scan-path: './src'
@@ -134,23 +137,28 @@ jobs:
 ## Supported Languages & Tools
 
 ### Python
+
 - **Safety**: Checks for known security vulnerabilities in dependencies
 - **Bandit**: Finds common security issues in Python code
 - **Semgrep**: Pattern-based static analysis
 
 ### JavaScript/Node.js
+
 - **npm audit**: Official npm security auditing tool
 - **Retire.js**: Detects vulnerable JavaScript libraries
 - **Snyk**: Finds and fixes vulnerabilities
 
 ### Go
+
 - **gosec**: Inspects Go code for security problems
 
 ### Ruby
+
 - **bundler-audit**: Checks for vulnerable gem versions
 - **Brakeman**: Static analysis for Rails applications
 
 ### Java (Coming Soon)
+
 - Dependency-Check
 - SpotBugs with security plugins
 
@@ -162,18 +170,20 @@ The action follows a modular parser architecture:
 2. **Tool Execution**: Runs appropriate security scanners
 3. **Result Parsing**: Unified parser for all tool outputs
 4. **Issue Management**: Creates and manages GitHub issues
-5. **Assignment**: Routes to Copilot or fallback assignees
+5. **AI Assignment**: Routes to Copilot for self-healing remediation
 
-## Copilot Integration
+## Self-Healing with Copilot
 
-When you specify a `copilot-assignee`, the action:
+When you specify a `copilot-assignee`, the action creates an organic, self-healing security loop:
 
 1. Verifies the user exists and has repository access
 2. Creates issues assigned to that user
 3. Falls back to `fallback-assignee` if primary user is unavailable
 4. Formats issues with structured data for AI processing
+5. GitHub Copilot analyzes and suggests fixes
+6. Auto-closes issues when vulnerabilities are resolved
 
-GitHub Copilot can then suggest fixes directly in the issue or pull request.
+This creates an almost organic, autonomous security remediation cycle.
 
 ## Security Considerations
 
@@ -185,12 +195,15 @@ GitHub Copilot can then suggest fixes directly in the issue or pull request.
 ## Troubleshooting
 
 ### No vulnerabilities found
+
 - Ensure your project has dependency files (requirements.txt, package.json, etc.)
 - Check that the correct languages are being detected
 - Lower the `severity-threshold` to see more results
 
 ### Permission denied errors
+
 Ensure your workflow has proper permissions:
+
 ```yaml
 permissions:
   contents: read
@@ -198,6 +211,7 @@ permissions:
 ```
 
 ### Copilot user not found
+
 - Verify the username is correct
 - Ensure the user has repository access
 - Consider adding a `fallback-assignee`
@@ -205,6 +219,7 @@ permissions:
 ## Contributing
 
 Contributions are welcome! Please see our [Wiki](../../wiki) for:
+
 - Architecture documentation
 - Adding new language support
 - Custom parser development
