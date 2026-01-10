@@ -1,4 +1,4 @@
-name: 'Universal Security Scanner'
+name: 'AI Self-Healing Security'
 description: 'Language-agnostic security vulnerability scanner with extensible parser architecture. Auto-creates issues and assigns to GitHub Copilot for AI-powered remediation.'
 author: 'kmesiab'
 branding:
