@@ -78,7 +78,7 @@ runs:
       shell: bash
       run: |
         # Install Python security tools
-        pip install safety bandit semgrep
+        pip install pip-audit bandit semgrep safety==2.3.5
         
         # Install Node.js security tools
         npm install -g npm-audit retire snyk
@@ -148,7 +148,7 @@ runs:
         if echo "$LANGS" | grep -q "python"; then
           echo "Scanning Python..."
           
-          # Safety check
+          # pip-audit check
           if [ -f "requirements.txt" ]; then
             safety check --json --file requirements.txt > $GITHUB_WORKSPACE/scan-results/safety.json 2>&1 || true
           fi
