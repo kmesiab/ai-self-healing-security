@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 """Parse security scan results and create GitHub issues."""
-
 import argparse
 import json
 import os
@@ -82,16 +81,18 @@ class VulnerabilityParser:
         """Parse Safety JSON output."""
         vulnerabilities = []
         try:
-                    # Check if file is empty or contains non-JSON content
-        if filepath.stat().st_size == 0:
-            return vulnerabilities
+            # Check if file is empty or contains non-JSON content
+            if filepath.stat().st_size == 0:
+                return vulnerabilities
 
-                    # Read file content to check for JSON
-        content = filepath.read_text().strip()
-        if not content or not content.startswith(('{', '[')):
-            print(f"Safety JSON file is empty or not valid JSON, skipping")
-            return vulnerabilities
-           data = json.loads(content)
+            # Read file content to check for JSON
+            content = filepath.read_text().strip()
+            if not content or not content.startswith(('{', '[')):
+                print(f"Safety JSON file is empty or not valid JSON, skipping")
+                return vulnerabilities
+
+            data = json.loads(content)
+            for vuln in data.get("vulnerabilities", []):
                 severity = vuln.get("severity", "medium").lower()
                 if self.SEVERITY_MAP.get(severity, 0) >= self.threshold_level:
                     vulnerabilities.append({
@@ -106,12 +107,48 @@ class VulnerabilityParser:
             print(f"Error parsing Safety JSON: {e}")
         return vulnerabilities
 
+    def parse_bandit_json(self, filepath: Path) -> List[Dict]:
+        """Parse Bandit JSON output."""
+        vulnerabilities = []
+        try:
+            if not filepath.exists() or filepath.stat().st_size == 0:
+                return vulnerabilities
+            
+            with open(filepath) as f:
+                data = json.load(f)
+            
+            for result in data.get("results", []):
+                # Map Bandit confidence/severity to our severity
+                confidence = result.get("issue_confidence", "MEDIUM")
+                severity = "medium"
+                if confidence == "HIGH":
+                    severity = "high"
+                elif confidence == "LOW":
+                    severity = "low"
+                
+                if self.SEVERITY_MAP.get(severity, 0) >= self.threshold_level:
+                    vulnerabilities.append({
+                        "title": f"[Python/Bandit] {result.get('test_id')}: {result.get('issue_text')}",
+                        "severity": severity,
+                        "package": "code-analysis",
+                        "version": f"Line {result.get('line_number')}",
+                        "description": f"{result.get('issue_text')}\n\nFile: {result.get('filename')}\nLine: {result.get('line_number')}",
+                        "cve": result.get("test_id"),
+                    })
+        except Exception as e:
+            print(f"Error parsing Bandit JSON: {e}")
+        return vulnerabilities
+
     def parse_npm_audit_json(self, filepath: Path) -> List[Dict]:
         """Parse npm audit JSON output."""
         vulnerabilities = []
         try:
+            if not filepath.exists() or filepath.stat().st_size == 0:
+                return vulnerabilities
+                
             with open(filepath) as f:
                 data = json.load(f)
+                
             for vuln_id, vuln in data.get("vulnerabilities", {}).items():
                 severity = vuln.get("severity", "medium").lower()
                 if self.SEVERITY_MAP.get(severity, 0) >= self.threshold_level:
@@ -130,17 +167,22 @@ class VulnerabilityParser:
     def parse_all_results(self, results_dir: Path) -> List[Dict]:
         """Parse all result files in directory."""
         all_vulnerabilities = []
-
-        # Parse Safety results
+        
+        # Parse Safety results (Python)
         safety_file = results_dir / "safety.json"
         if safety_file.exists():
             all_vulnerabilities.extend(self.parse_safety_json(safety_file))
-
-        # Parse npm audit results
+        
+        # Parse Bandit results (Python)
+        bandit_file = results_dir / "bandit.json"
+        if bandit_file.exists():
+            all_vulnerabilities.extend(self.parse_bandit_json(bandit_file))
+        
+        # Parse npm audit results (JavaScript)
         npm_file = results_dir / "npm-audit.json"
         if npm_file.exists():
             all_vulnerabilities.extend(self.parse_npm_audit_json(npm_file))
-
+        
         return all_vulnerabilities
 
 
@@ -152,7 +194,6 @@ def main():
     parser.add_argument("--fallback-assignee", default="", help="Fallback assignee")
     parser.add_argument("--auto-close-fixed", default="true", help="Auto-close fixed issues")
     parser.add_argument("--repository", required=True, help="Repository (owner/repo)")
-
     args = parser.parse_args()
 
     # Initialize managers
@@ -167,7 +208,6 @@ def main():
     # Parse all vulnerabilities
     results_dir = Path(args.results_dir)
     vulnerabilities = parser_obj.parse_all_results(results_dir)
-
     print(f"Found {len(vulnerabilities)} vulnerabilities")
 
     # Determine assignee
@@ -183,8 +223,8 @@ def main():
     # Create issues for new vulnerabilities
     existing_issues = issue_manager.get_existing_issues()
     existing_titles = {issue["title"] for issue in existing_issues}
-
     issues_created = 0
+
     for vuln in vulnerabilities:
         if vuln["title"] not in existing_titles:
             body = f"""## Security Vulnerability Detected
@@ -194,12 +234,13 @@ def main():
 **Version:** {vuln['version']}
 
 ### Description
+
 {vuln['description']}
 
 {f"**CVE:** {vuln['cve']}" if vuln.get('cve') else ""}
 
 ---
-*This issue was automatically created by the Universal Security Scanner.*
+*This issue was automatically created by the AI Self-Healing Security Scanner.*
 """
             issue_manager.create_issue(vuln["title"], body, assignee)
             issues_created += 1
