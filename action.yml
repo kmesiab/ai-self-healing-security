@@ -150,8 +150,8 @@ runs:
           
           # pip-audit check
           if [ -f "requirements.txt" ]; then
-            safety check --json --file requirements.txt > $GITHUB_WORKSPACE/scan-results/safety.json 2>&1 || true
-          fi
+              safety check --json --file requirements.txt > $GITHUB_WORKSPACE/scan-results/safety.json || true
+                          fi
           
           # Bandit check
           bandit -r . -f json -o $GITHUB_WORKSPACE/scan-results/bandit.json 2>&1 || true
