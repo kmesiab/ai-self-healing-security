@@ -82,9 +82,16 @@ class VulnerabilityParser:
         """Parse Safety JSON output."""
         vulnerabilities = []
         try:
-            with open(filepath) as f:
-                data = json.load(f)
-            for vuln in data.get("vulnerabilities", []):
+                    # Check if file is empty or contains non-JSON content
+        if filepath.stat().st_size == 0:
+            return vulnerabilities
+
+                    # Read file content to check for JSON
+        content = filepath.read_text().strip()
+        if not content or not content.startswith(('{', '[')):
+            print(f"Safety JSON file is empty or not valid JSON, skipping")
+            return vulnerabilities
+           data = json.loads(content)
                 severity = vuln.get("severity", "medium").lower()
                 if self.SEVERITY_MAP.get(severity, 0) >= self.threshold_level:
                     vulnerabilities.append({
