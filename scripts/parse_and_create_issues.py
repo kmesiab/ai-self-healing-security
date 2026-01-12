@@ -82,8 +82,9 @@ class VulnerabilityParser:
         vulnerabilities = []
         try:
             # Check if file is empty or contains non-JSON content
-                    print(f"DEBUG: Safety file size: {filepath.stat().st_size} bytes")f filepath.stat().st_size == 0:
-                return vulnerabilities
+        print(f"DEBUG: Safety file size: {filepath.sstat().st_size} bytes")
+        if filepath.stat().st_size == 0:
+            reeturn vulnerabilities
 
             # Read file content to check for JSON
             content = filepath.
