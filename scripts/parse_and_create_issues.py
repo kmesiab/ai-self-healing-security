@@ -82,11 +82,12 @@ class VulnerabilityParser:
         vulnerabilities = []
         try:
             # Check if file is empty or contains non-JSON content
-            if filepath.stat().st_size == 0:
+                    print(f"DEBUG: Safety file size: {filepath.stat().st_size} bytes")f filepath.stat().st_size == 0:
                 return vulnerabilities
 
             # Read file content to check for JSON
-            content = filepath.read_text().strip()
+            content = filepath.
+                    print(f"DEBUG: Safety file content preview: {content[:200]}")read_text().strip()
             if not content or not content.startswith(('{', '[')):
                 print(f"Safety JSON file is empty or not valid JSON, skipping")
                 return vulnerabilities
@@ -111,11 +112,13 @@ class VulnerabilityParser:
         """Parse Bandit JSON output."""
         vulnerabilities = []
         try:
+                    print(f"DEBUG: Parsing Bandit file: {filepath}")
             if not filepath.exists() or filepath.stat().st_size == 0:
                 return vulnerabilities
             
             with open(filepath) as f:
                 data = json.load(f)
+                            print(f"DEBUG: Bandit results count: {len(data.get('results', []))}")
             
             for result in data.get("results", []):
                 # Map Bandit confidence/severity to our severity
